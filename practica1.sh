@@ -33,8 +33,8 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 # Firewall interfaces
 # -------------------------------------------
 # -> eth2 -> 192.168.56.101/24 -> LAN
-# -> eth3 -> 192.168.0.195/24  -> DMZ
-# -> eth1 ->     10.0.2.16/24  -> WAN
+# -> eth3 ->  192.168.0.195/24 -> DMZ
+# -> eth1 ->      10.0.2.16/24 -> WAN
 
 
 # -------------------------------------------
@@ -44,7 +44,7 @@ iptables -t nat -A POSTROUTING -s 192.168.56.0/24 -o eth3 -d 192.168.0.193 -j MA
 
 
 # -------------------------------------------
-# Allow http and ftp traffic from LAN to DMZ
+# Allow http and ftp traffic from LAN -> DMZ
 # -------------------------------------------
 iptables -A FORWARD -i eth2 -s 192.168.56.0/24 -o eth3 -d 192.168.0.193 -p tcp --sport 1024:65535 --dport 20 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -i eth2 -s 192.168.56.0/24 -o eth3 -d 192.168.0.193 -p tcp --sport 1024:65535 --dport 21 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
@@ -53,6 +53,27 @@ iptables -A FORWARD -i eth2 -s 192.168.56.0/24 -o eth3 -d 192.168.0.193 -p tcp -
 iptables -A FORWARD -i eth3 -s 192.168.0.193 -o eth2 -d 192.168.56.0/24 -p tcp --sport 20 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -i eth3 -s 192.168.0.193 -o eth2 -d 192.168.56.0/24 -p tcp --sport 21 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -i eth3 -s 192.168.0.193 -o eth2 -d 192.168.56.0/24 -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+
+# -------------------------------------------
+# Allow ssh traffic from LAN -> Firewall
+# -------------------------------------------
+iptables -A INPUT -i eth2 -s 192.168.56.0/24 -p tcp --sport 1024:65535 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A OUTPUT -o eth2 -d 192.168.56.0/24 -p tcp --sport 22 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+
+
+# -------------------------------------------
+# Allow outgoing ping from Firewall -> LAN
+# -------------------------------------------
+iptables -A OUTPUT -o eth2 -d 192.168.56.0/24 -p icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i eth2 -s 192.168.56.0/24 -p icmp --icmp-type echo-reply -j ACCEPT
+
+
+# -------------------------------------------
+# Allow outgoing ping from Firewall -> DMZ
+# -------------------------------------------
+iptables -A OUTPUT -o eth3 -d 192.168.0.193 -p icmp --icmp-type echo-request -j ACCEPT
+iptables -A INPUT -i eth3 -s 192.168.0.193 -p icmp --icmp-type echo-reply -j ACCEPT
 
 
 # -------------------------------------------
