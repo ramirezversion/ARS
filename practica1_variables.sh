@@ -111,7 +111,7 @@ iptables -A INPUT -i $IFACE_DMZ -s $IP_DMZ_SERVER -p icmp --icmp-type echo-reply
 # -------------------------------------------
 # Enable nat from LAN -> INET
 # -------------------------------------------
-iptables -t nat -A POSTROUTING -s $NETWK_LAN -o $IFACE_WAN -d $IP_INET -j SNAT --to 10.0.2.16
+iptables -t nat -A POSTROUTING -s $NETWK_LAN -o $IFACE_WAN -d $IP_INET -j SNAT --to $IP_WAN
 
 
 # -------------------------------------------
@@ -138,24 +138,40 @@ iptables -t nat -A PREROUTING -i $IFACE_WAN -d $IP_WAN -p tcp --dport 80 -j DNAT
 
 
 # -------------------------------------------
-# Enable nat from DMZ -> INET
+# Enable port nat for incoming ftp pasv traffic from INET -> DMZ
 # -------------------------------------------
-iptables -t nat -A POSTROUTING -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -j SNAT --to 10.0.2.16
+# pasv_enable=YES
+# pasv_min_port=10090
+# pasv_max_port=10100
+iptables -t nat -A PREROUTING -i $IFACE_WAN -d $IP_WAN -p tcp --dport 10090:10100 -j DNAT --to $IP_DMZ_SERVER
+
+
+# -------------------------------------------
+# Enable NAT from INET -> DMZ
+# -------------------------------------------
+iptables -t nat -A POSTROUTING -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -j MASQUERADE
 
 
 # -------------------------------------------
 # Enable http and ftp traffic from INET -> DMZ
 # -------------------------------------------
-#iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 20 -m state --state NEW,ESTABLISHED -j ACCEPT
-#iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
-#iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 20 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
 
-#iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 20 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
-#iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 21 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
-#iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 20 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 21 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
 
-iptables -A FORWARD -i $IFACE_WAN -o $IFACE_DMZ -j ACCEPT
-iptables -A FORWARD -o $IFACE_WAN -i $IFACE_DMZ -j ACCEPT
+
+# -------------------------------------------
+# Allow ftp pasv traffic from INET -> DMZ
+# -------------------------------------------
+# pasv_enable=YES
+# pasv_min_port=10090
+# pasv_max_port=10100
+iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 10090:10100 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 10090:10100 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 
 echo "------------------------------"
