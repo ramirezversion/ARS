@@ -53,6 +53,7 @@ NETWK_WAN="10.0.2.0/24"
 
 IP_DMZ_SERVER="192.168.0.193"
 IP_WAN="10.0.2.16"
+IP_LAN="192.168.56.101"
 IP_INET="0.0.0.0/0"
 
 
@@ -78,7 +79,6 @@ iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_LAN -d $NETWK_LAN 
 iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 21 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-
 # -------------------------------------------
 # Allow ftp pasv traffic from LAN -> DMZ
 # -------------------------------------------
@@ -87,7 +87,6 @@ iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_LAN -d $NETWK_LAN 
 # pasv_max_port=10100
 iptables -A FORWARD -i $IFACE_LAN -s $NETWK_LAN -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 10090:10100 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
 iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 10090:10100 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
-
 
 # -------------------------------------------
 # Allow ssh traffic from LAN -> Firewall
@@ -173,7 +172,6 @@ iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p
 # pasv_min_port=10090
 # pasv_max_port=10100
 iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 10090:10100 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
-
 iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 10090:10100 --dport 1024:65535 -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 
