@@ -2,6 +2,10 @@
 
 clear
 
+echo "------------------------------"
+echo "-- $0 --"
+echo "------------------------------"
+
 # -------------------------------------------
 # Initialize iptables and set default policy
 # -------------------------------------------
@@ -48,7 +52,8 @@ NETWK_DMZ="192.168.0.0/24"
 NETWK_WAN="10.0.2.0/24"
 
 IP_DMZ_SERVER="192.168.0.193"
-IP_WAN_INET="0.0.0.0/0"
+IP_WAN="10.0.2.16"
+IP_INET="0.0.0.0/0"
 
 
 echo "------------------------------"
@@ -106,48 +111,56 @@ iptables -A INPUT -i $IFACE_DMZ -s $IP_DMZ_SERVER -p icmp --icmp-type echo-reply
 # -------------------------------------------
 # Enable nat from LAN -> INET
 # -------------------------------------------
-iptables -t nat -A POSTROUTING -s $NETWK_LAN -o eth1 -d $IP_WAN_INET -j SNAT --to 10.0.2.16
+iptables -t nat -A POSTROUTING -s $NETWK_LAN -o $IFACE_WAN -d $IP_INET -j SNAT --to 10.0.2.16
 
 
 # -------------------------------------------
 # Enable http traffic from LAN -> INET
 # for real navigation it will be necessary DNS traffic from our DNS server (TCP) or clients (UDP) to an external DNS server. This configuration has been omitted.
 # -------------------------------------------
-iptables -A FORWARD -i $IFACE_LAN -s $NETWK_LAN -o eth1 -d $IP_WAN_INET -p tcp --sport 1024:65535 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i eth1 -s $IP_WAN_INET -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED  -j ACCEPT
+iptables -A FORWARD -i $IFACE_LAN -s $NETWK_LAN -o $IFACE_WAN -d $IP_INET -p tcp --sport 1024:65535 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED  -j ACCEPT
 
 
 # -------------------------------------------
 # Enable ssh traffic from LAN -> INET
 # -------------------------------------------
-iptables -A FORWARD -i $IFACE_LAN -s $NETWK_LAN -o eth1 -d $IP_WAN_INET -p tcp --sport 1024:65535 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i eth1 -s $IP_WAN_INET -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 22 --dport 1024:65535 -m state --state ESTABLISHED  -j ACCEPT
+iptables -A FORWARD -i $IFACE_LAN -s $NETWK_LAN -o $IFACE_WAN -d $IP_INET -p tcp --sport 1024:65535 --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_LAN -d $NETWK_LAN -p tcp --sport 22 --dport 1024:65535 -m state --state ESTABLISHED  -j ACCEPT
 
 
 # -------------------------------------------
 # Enable port nat for incoming http and ftp traffic from INET -> DMZ
 # -------------------------------------------
-iptables -t nat -A PREROUTING -i eth1 -s $IP_WAN_INET -p tcp --dport 20 -j DNAT --to $IP_DMZ_SERVER:20
-iptables -t nat -A PREROUTING -i eth1 -s $IP_WAN_INET -p tcp --dport 21 -j DNAT --to $IP_DMZ_SERVER:21
-iptables -t nat -A PREROUTING -i eth1 -s $IP_WAN_INET -p tcp --dport 80 -j DNAT --to $IP_DMZ_SERVER:80
-
-
-# -------------------------------------------
-# Enable http and ftp traffic from INET -> DMZ
-# -------------------------------------------
-iptables -A FORWARD -i eth1 -s $IP_WAN_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 20 -m state --state NEW,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i eth1 -s $IP_WAN_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i eth1 -s $IP_WAN_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
-
-iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o eth1 -d $IP_WAN_INET -p tcp --sport 20 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o eth1 -d $IP_WAN_INET -p tcp --sport 21 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o eth1 -d $IP_WAN_INET -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+iptables -t nat -A PREROUTING -i $IFACE_WAN -d $IP_WAN -p tcp --dport 20 -j DNAT --to $IP_DMZ_SERVER
+iptables -t nat -A PREROUTING -i $IFACE_WAN -d $IP_WAN -p tcp --dport 21 -j DNAT --to $IP_DMZ_SERVER
+iptables -t nat -A PREROUTING -i $IFACE_WAN -d $IP_WAN -p tcp --dport 80 -j DNAT --to $IP_DMZ_SERVER
 
 
 # -------------------------------------------
 # Enable nat from DMZ -> INET
 # -------------------------------------------
-iptables -t nat -A POSTROUTING -s $IP_DMZ_SERVER -o eth1 -d $IP_WAN_INET -j SNAT --to 10.0.2.16
+iptables -t nat -A POSTROUTING -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -j SNAT --to 10.0.2.16
+
+
+# -------------------------------------------
+# Enable http and ftp traffic from INET -> DMZ
+# -------------------------------------------
+#iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 20 -m state --state NEW,ESTABLISHED -j ACCEPT
+#iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 21 -m state --state NEW,ESTABLISHED -j ACCEPT
+#iptables -A FORWARD -i $IFACE_WAN -s $IP_INET -o $IFACE_DMZ -d $IP_DMZ_SERVER -p tcp --sport 1024:65535 --dport 80 -m state --state NEW,ESTABLISHED -j ACCEPT
+
+#iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 20 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+#iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 21 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+#iptables -A FORWARD -i $IFACE_DMZ -s $IP_DMZ_SERVER -o $IFACE_WAN -d $IP_INET -p tcp --sport 80 --dport 1024:65535 -m state --state ESTABLISHED -j ACCEPT
+
+iptables -A FORWARD -i $IFACE_WAN -o $IFACE_DMZ -j ACCEPT
+iptables -A FORWARD -o $IFACE_WAN -i $IFACE_DMZ -j ACCEPT
+
+
+echo "------------------------------"
+echo "-- Finishing configuration  --"
+echo "------------------------------"
 
 
 # -------------------------------------------
@@ -170,6 +183,8 @@ echo "-- Saving iptables config   --"
 echo "------------------------------"
 service iptables save
 
+echo ""
 echo "------------------------------"
-echo "--          FINISH!         --"
+echo "-->        FINISH!         <--"
 echo "------------------------------"
+echo ""
