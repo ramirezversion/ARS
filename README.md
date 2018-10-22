@@ -1,1 +1,1 @@
-# IPTABLES script configuration example with DMZ, LAN and WAN connections
+### IPTABLES script configuration example with DMZ, LAN and WAN connections
